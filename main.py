@@ -984,4 +984,3 @@ if save2 != '':
     differenza(h[2], 'development')
     differenza(h[3], 'max manpower')
 print('check your graphs folder(Press ENTER to close)')
-g=input()
