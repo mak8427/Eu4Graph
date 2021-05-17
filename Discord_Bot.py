@@ -4,6 +4,9 @@ import random
 from discord.ext import commands
 from discord.utils import get
 import os
+from discord.ext.commands import cooldown, BucketType, CommandOnCooldown, Context, CommandNotFound, BadArgument
+from discord.ext.commands import Bot as Botbase
+
 import config
 import pandas as pd
 import requests as rq
@@ -13,20 +16,42 @@ import json
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import time
+import asyncio
 
-client = commands.Bot(command_prefix = ',')
+IGNORE_EXCEPTIONS = (CommandNotFound, BadArgument)
+client = commands.Bot(command_prefix=',')
+
+
+@commands.Cog.listener()
+async def on_command_error(self, ctx, exc):
+    if isinstance(exc, CommandOnCooldown):
+        emb = discord.Embed(title='Shut up and let me think!',
+                            description=f'That command is on cooldown, try again in {exc.retry_after:,.2f} seconds.',
+                            color=0xFFBF00)
+        await ctx.send(embed=emb)
+
+
 @client.event
 async def on_ready():
     print('bot ready')
+
+
 @client.command()
 async def ping(ctx):
-    await ctx.send(f'pong {round(client.latency*1000)}ms')
+    await ctx.send(f'pong {round(client.latency * 1000)}ms')
+
+
 @client.command()
 async def help1(ctx):
     await ctx.send(f'if you want to make graphs use this format: \n ,graphs Skanderbeg_Save_ID \n Ex:  ,graphs d852c8 ')
+
+
 @client.command()
-async def graphs(ctx,*,code):
-    a=code
+@cooldown(1, 120, BucketType.user)
+async def graphs(ctx, *, code):
+    await ctx.send('wait for the graphs')
+    a = code
     save = code
     print('do you want to compare this save with an older one?[y/n]')
     resp1 = 'n'
@@ -62,7 +87,11 @@ async def graphs(ctx,*,code):
         f_out.write(soup.prettify())
 
     with open('data.json') as json_file:
-        data = json.load(json_file)
+        try:
+            data = json.load(json_file)
+        except:
+            await ctx.send(
+                f'Invalid Skanderbeg Save id / the Skanderbeg server is offline \n Try to redo the command with the correct id or dm me with:,creator')
 
     df = pd.read_json('data.json')
     corpus = df.iloc[0][1]
@@ -172,7 +201,7 @@ async def graphs(ctx,*,code):
     lista = [df1]
     date = [1444, 1469, 1481, 1]
     tags = df1['tag'].tolist()
-    tagss=tags
+    tagss = tags
     print(tags)
     players = df1['countryName'].tolist()
     i = 0
@@ -340,12 +369,12 @@ async def graphs(ctx,*,code):
     massimo = len(lines) - 1
     if massimo > 20:
         resp = ' but the optimal maximum is around 20'
-        y=str(20)
+        y = str(20)
     else:
         resp = ''
-        y=str(massimo)
+        y = str(massimo)
     print('how many nation do you want ot print? the max is ' + str(massimo) + resp)
-    y=str(20)
+    y = str(20)
     y = int(y)
     f = 100 / y
     alpha1 = 0.8
@@ -991,15 +1020,21 @@ async def graphs(ctx,*,code):
         differenza(h[1], 'provinces')
         differenza(h[2], 'development')
         differenza(h[3], 'max manpower')
-    xfiles=['dev clicks','max manpower','dev','income','armies','avg dev','Battle casualities','Buildings Value','provinces','total navy','moneyspent','manpower per province','Mana spent on teching up','Mana spent on devving','income per dev(nation efficency)']
+    xfiles = ['dev clicks', 'max manpower', 'dev', 'income', 'armies', 'avg dev', 'Battle casualities',
+              'Buildings Value', 'provinces', 'total navy', 'moneyspent', 'manpower per province',
+              'Mana spent on teching up', 'Mana spent on devving', 'income per dev(nation efficency)']
     for jf in xfiles:
-        png=jf+'.png'
+        png = jf + '.png'
         with open(png, 'rb') as f:
             picture = discord.File(f)
             await ctx.send(file=picture)
     print('check your graphs folder(Press ENTER to close)')
+    await ctx.send('Spam limiter: 2 minutes in Cooldown')
+
+
 @client.command()
 async def creator(ctx):
-    await ctx.send('My creator is Mak84271,and he is the best eu4 player')
+    await ctx.send('My creator is mak84271#3674,and he is the best eu4 player')
+
 
 client.run(config.key)
