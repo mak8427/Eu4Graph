@@ -1,14 +1,6 @@
 import discord
-import numpy as np
-import random
 from discord.ext import commands
-from discord.utils import get
-import os
 from discord.ext.commands import cooldown, BucketType, CommandOnCooldown, Context, CommandNotFound, BadArgument
-from discord.ext.commands import Bot as Botbase
-
-import config
-import pandas as pd
 import requests as rq
 from bs4 import BeautifulSoup
 import csv
@@ -16,13 +8,11 @@ import json
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import time
-import asyncio
-
+import config
 IGNORE_EXCEPTIONS = (CommandNotFound, BadArgument)
 client = commands.Bot(command_prefix=',')
 
-
+client.remove_command('help')
 @commands.Cog.listener()
 async def on_command_error(self, ctx, exc):
     if isinstance(exc, CommandOnCooldown):
@@ -38,13 +28,24 @@ async def on_ready():
 
 
 @client.command()
+@cooldown(1,15, BucketType.user)
 async def ping(ctx):
     await ctx.send(f'pong {round(client.latency * 1000)}ms')
 
 
-@client.command()
-async def help1(ctx):
-    await ctx.send(f'if you want to make graphs use this format: \n ,graphs Skanderbeg_Save_ID \n Ex:  ,graphs d852c8 ')
+@client.command(pass_context=True)
+@cooldown(1,15, BucketType.user)
+async def help(ctx):
+    author=ctx.message.author
+    embed=discord.Embed(colour=discord.Colour.dark_blue())
+    embed.set_author(name='Help')
+    embed.add_field(name='Description',value='The Goal of this bot is to make graphs for Europa universalis 4,by using the Skanderbeg save data',inline=False)
+    embed.add_field(name=',ping',value='returns pong!',inline=False)
+    embed.add_field(name=',graphs',value=f'if you want to make graphs use this format: \n ,graphs Skanderbeg_Save_ID \n Ex:  ,graphs d852c8 \n you can get the Skanderbeg_Save_ID in the skanderbeg site in the ID column in My Maps (https://skanderbeg.pm/maps.php)',inline=False)
+    embed.add_field(name=',creator', value='returns the discord id of me:the creator', inline=False)
+    await ctx.send(embed=embed)
+
+
 
 
 @client.command()
@@ -71,7 +72,7 @@ async def graphs(ctx, *, code):
         folder = ''
     if folder == '':
         print('please indicate the location of the folder where you want to store your graphs')
-        folder = r'C:\Users\dadoi\PycharmProjects\eugraphs'
+        folder = ''
         with open('folder.txt', 'wt') as z:
             z.write(str(folder))
 
@@ -374,7 +375,6 @@ async def graphs(ctx, *, code):
         resp = ''
         y = str(massimo)
     print('how many nation do you want ot print? the max is ' + str(massimo) + resp)
-    y = str(20)
     y = int(y)
     f = 100 / y
     alpha1 = 0.8
@@ -425,7 +425,7 @@ async def graphs(ctx, *, code):
             for i, v in enumerate(s.loc[len(s) - 1]):  # testo su barre
                 ax1.text(i - len(str(round(v, 1))) * sz, v + 0.5, str(round(v, 1)), color='black', fontweight='bold',
                          size=sizes)
-            plt.savefig(folder + '/dev')
+            plt.savefig(folder + 'dev.png')
             plt.close()
         if k == 1:  # income
             plt.figure(figsize=[19.2, 10.8])
@@ -471,35 +471,42 @@ async def graphs(ctx, *, code):
             for i, v in enumerate(s.loc[len(s) - 1]):  # testo su barre
                 ax1.text(i - len(str(round(v))) * sz, v + 0.5, str(round(v)), color='black', fontweight='bold',
                          size=sizes)
-            plt.savefig(folder + '/income')
+            plt.savefig(folder + 'income.png')
             plt.close()
         if k == 2:  # valore immobili
             plt.figure(figsize=[19.2, 10.8])
             s = s.sort_values(by=(len(s) - 1), axis=1, ascending=False)
-            hj = s.iloc[:, range(10, y)]
-            s = s.iloc[:, range(0, 10)]
+            if y>10:
+                hj = s.iloc[:, range(10, y)]
+                s = s.iloc[:, range(0, 10)]
+                others = 0
+                counting = 0
+                coloriar = []
+                hh = hj.values.tolist()
+                for value in hh[0]:
+                    others = others + value
+                    counting = counting + 1
+                s['Others'] = others
 
-            others = 0
-            counting = 0
-            coloriar = []
-            hh = hj.values.tolist()
-            for value in hh[0]:
-                others = others + value
-                counting = counting + 1
-            s['Others'] = others
-
-            for nomej in s.columns:
-                try:
-                    coloriar.append(colornazioni[nomej])
-                except:
-                    coloriar.append('gray')
+                for nomej in s.columns:
+                    try:
+                        coloriar.append(colornazioni[nomej])
+                    except:
+                        coloriar.append('gray')
+            else:
+                coloriar = []
+                for nomej in s.columns:
+                    try:
+                        coloriar.append(colornazioni[nomej])
+                    except:
+                        coloriar.append('gray')
 
             ax2 = s.loc[len(s) - 1].plot.pie(autopct=lambda pct: func(pct, s.loc[len(s) - 1]), startangle=90,
                                              radius=1.3, colors=coloriar)
             plt.grid(axis='y', alpha=alphagrid)
 
             ax2.text(-0.3, 1.5, 'Buildings Value', color='black', fontweight='bold', size=sizes)
-            plt.savefig(folder + '/Buildings Value')
+            plt.savefig(folder + 'Buildings Value.png')
             plt.close()
         if k == 3:  # province
             plt.figure(figsize=[19.2, 10.8])
@@ -534,7 +541,7 @@ async def graphs(ctx, *, code):
             for i, v in enumerate(s.loc[len(s) - 1]):  # testo su barre.
                 ax1.text(i - len(str(round(v, 1))) * sz, v + 0.5, str(round(v, 1)), color='black', fontweight='bold',
                          size=sizes)
-            plt.savefig(folder + '/provinces')
+            plt.savefig(folder + 'provinces.png')
             plt.close()
         if k == 4:
             plt.figure(figsize=[19.2, 10.8])
@@ -579,7 +586,7 @@ async def graphs(ctx, *, code):
                     ax1.text(i - len(str(round(v / 1000, 1)) + 'k') * sz, v + 0.5, str(round(v / 1000, 1)) + 'k',
                              color='black', fontweight='bold', size=sizes)
 
-            plt.savefig(folder + '/Battle casualities')
+            plt.savefig(folder + 'Battle casualities.png')
             plt.close()
         if k == 5:
             plt.figure(figsize=[19.2, 10.8])
@@ -623,7 +630,7 @@ async def graphs(ctx, *, code):
                 ax2.text(i - 0.10, v + 1, str(round(v)) + '%', color='black', fontweight='bold', size=sizes)
             for i, v in enumerate(s.loc[len(s) - 1]):  # testo su barre
                 ax1.text(i - len(str(int(v))) * sz, v + 0.5, str(int(v)), color='black', fontweight='bold', size=sizes)
-            plt.savefig(folder + '/armies')
+            plt.savefig(folder + 'armies.png')
             plt.close()
         if k == 7:
             plt.figure(figsize=[19.2, 10.8])
@@ -658,7 +665,7 @@ async def graphs(ctx, *, code):
                 ax1.text(i - len(str(round(v / 1000, 1)) + 'k') * sz, v + 0.5, str(round(v / 1000, 1)) + 'k',
                          color='black',
                          fontweight='bold', size=sizes)
-            plt.savefig(folder + '/Mana spent on devving')
+            plt.savefig(folder + 'Mana spent on devving.png')
             plt.close()
         if k == 8:
             plt.figure(figsize=[19.2, 10.8])
@@ -696,7 +703,7 @@ async def graphs(ctx, *, code):
                 ax1.text(i - len(str(round(v / 1000, 1)) + 'k') * sz, v + 0.5, str(round(v / 1000, 1)) + 'k',
                          color='black',
                          fontweight='bold', size=sizes)
-            plt.savefig(folder + '/Mana spent on teching up')
+            plt.savefig(folder + 'Mana spent on teching up.png')
             plt.close()
         if k == 9:
             plt.figure(figsize=[19.2, 10.8])
@@ -724,7 +731,7 @@ async def graphs(ctx, *, code):
                 else:
                     ax1.text(i - len(str(round(v / 1000, 1)) + 'k') * sz, v + 0.5, str(round(v / 1000, 1)) + 'k',
                              color='black', fontweight='bold', size=sizes)
-            plt.savefig(folder + '/moneyspent')
+            plt.savefig(folder + 'moneyspent.png')
             plt.close()
         if k == 10:
             plt.figure(figsize=[19.2, 10.8])
@@ -774,7 +781,7 @@ async def graphs(ctx, *, code):
                 else:
                     ax1.text(i - len(str(round(v / 1000, 1)) + 'k') * sz, v + 0.5, str(round(v / 1000, 1)) + 'k',
                              color='black', fontweight='bold', size=sizes)
-            plt.savefig(folder + '/max manpower')
+            plt.savefig(folder + 'max manpower.png')
             plt.close()
         if k == 11:
             plt.figure(figsize=[19.2, 10.8])
@@ -810,7 +817,7 @@ async def graphs(ctx, *, code):
                 ax2.text(i - 0.10, v + 1, str(round(v)) + '%', color='black', fontweight='bold', size=sizes)
             for i, v in enumerate(s.loc[len(s) - 1]):  # testo su barre
                 ax1.text(i - len(str(int(v))) * sz, v + 0.5, str(int(v)), color='black', fontweight='bold', size=sizes)
-            plt.savefig(folder + '/total navy')
+            plt.savefig(folder + 'total navy.png')
             plt.close()
         if k == 13:
             try:
@@ -848,7 +855,7 @@ async def graphs(ctx, *, code):
                 for i, v in enumerate(s.loc[len(s) - 1]):  # testo su barre
                     ax1.text(i - len(str(int(v))) * sz, v + 0.5, str(int(v)), color='black', fontweight='bold',
                              size=sizes)
-                plt.savefig(folder + '/dev clicks')
+                plt.savefig(folder + 'dev clicks.png')
                 plt.close()
             except:
                 pass
@@ -914,7 +921,7 @@ async def graphs(ctx, *, code):
         ax1.text(i - len(str(round(v, 1))) * sz, v + 0.005, str(round(v, 1)), color='black', fontweight='bold',
                  size=sizes)
     plt.title('avg dev')
-    plt.savefig(folder + '/avg dev')
+    plt.savefig(folder + 'avg dev.png')
     plt.close()
     plt.figure(figsize=[19.2, 10.8])
 
@@ -934,7 +941,7 @@ async def graphs(ctx, *, code):
         ax1.text(i - len(str(round(v / 1000, 1)) + 'k') * sz, v + 0.05, str(round(v / 1000, 1)) + 'k', color='black',
                  fontweight='bold', size=sizes)
     plt.title('manpower per province')
-    plt.savefig(folder + '/manpower per province')
+    plt.savefig(folder + 'manpower per province.png')
     plt.close()
     plt.figure(figsize=[19.2, 10.8])
     avgincome = [(a - 2) / b for a, b in zip(income.loc[0], dev.loc[0])]
@@ -952,7 +959,7 @@ async def graphs(ctx, *, code):
     for i, v in enumerate(dfavgincome.loc[len(dfavgincome) - 1]):  # testo su barre
         ax1.text(i - len(str(round(v, 2))) * sz, v, str(round(v, 2)), color='black', fontweight='bold', size=sizes)
     plt.title('income per dev(nation efficency)')
-    plt.savefig(folder + '/income per dev(nation efficency)')
+    plt.savefig(folder + 'income per dev(nation efficency).png')
     plt.close()
 
     # diff income %
@@ -1027,12 +1034,15 @@ async def graphs(ctx, *, code):
         png = jf + '.png'
         with open(png, 'rb') as f:
             picture = discord.File(f)
+
             await ctx.send(file=picture)
+
     print('check your graphs folder(Press ENTER to close)')
     await ctx.send('Spam limiter: 2 minutes in Cooldown')
 
 
 @client.command()
+@cooldown(1,15, BucketType.user)
 async def creator(ctx):
     await ctx.send('My creator is mak84271#3674,and he is the best eu4 player')
 
